@@ -5,49 +5,52 @@ from groq import Groq
 st.set_page_config(page_title="Apex Strategy Engine", page_icon="📈")
 st.title("Apex Strategy Engine")
 
-# API Key input
 api_key = st.text_input("Enter Groq API Key", type="password")
 
 if api_key:
     client = Groq(api_key=api_key)
 
-    # Initialize chat history in session_state
-    if "messages" not in st.session_state:
-        st.session_state.messages = [
-            {"role": "system", "content": """
-            You are an Elite Global Strategy Consultant. Follow these rules:
-            1. THE PYRAMID PRINCIPLE: Start with the Executive Summary.
-            2. MECE FRAMEWORK: Ensure analysis is Mutually Exclusive and Collectively Exhaustive.
-            3. ECONOMIC LOGIC: Use Marginal Analysis and ROI.
-            4. AGGRESSIVE SCALING: Focus on 10x growth.
-            5. EXECUTION: Provide a 30-day "Critical Path" with KPIs.
-            """}
-        ]
+    refined_system_prompt = """
+    You are an Elite Global Strategy Consultant. Your output must be indistinguishable from a top-tier consulting firm.
+    
+    RULES:
+    1. PYRAMID PRINCIPLE: Start with the Executive Recommendation. Back it with 3 core pillars.
+    2. REALISM: Never suggest unrealistic growth without a granular, multi-year plan. Pivot to a 'Viable Path to Market'.
+    3. DATA-FIRST: If critical business metrics are missing (e.g., CAC, LTV), ask the user for them.
+    4. NO FLUFF: Be specific, analytical, and actionable.
+    5. MECE FRAMEWORK: Ensure analysis is Mutually Exclusive and Collectively Exhaustive.
+    """
 
-    # Display chat messages from history on app rerun
+    if "messages" not in st.session_state:
+        st.session_state.messages = [{"role": "system", "content": refined_system_prompt}]
+
     for message in st.session_state.messages:
         if message["role"] != "system":
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
-    # React to user input
-    if prompt := st.chat_input("Define your strategic objective or business challenge:"):
-        # Add user message to state and display it
+    if prompt := st.chat_input("Define your business challenge:"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Generate assistant response
         with st.chat_message("assistant"):
             with st.spinner("Synthesizing strategic roadmap..."):
                 try:
-                    stream = client.chat.completions.create(
+                    # Try the high-intelligence model first
+                    response = client.chat.completions.create(
+                        messages=st.session_state.messages,
+                        model="llama-3.1-70b-versatile",
+                        temperature=0.3
+                    )
+                except Exception:
+                    # Fallback to the faster, lighter model if 70B fails
+                    response = client.chat.completions.create(
                         messages=st.session_state.messages,
                         model="llama-3.1-8b-instant",
+                        temperature=0.3
                     )
-                    response = stream.choices[0].message.content
-                    st.markdown(response)
-                    # Add assistant response to state
-                    st.session_state.messages.append({"role": "assistant", "content": response})
-                except Exception as e:
-                    st.error(f"An error occurred: {e}")
+                
+                content = response.choices[0].message.content
+                st.markdown(content)
+                st.session_state.messages.append({"role": "assistant", "content": content})
